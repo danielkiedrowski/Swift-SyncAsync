@@ -10,7 +10,7 @@ This is **not** the right library if:
 - 🚫 You looove completion handlers, you want to do everything asynchronous. Adding 2+2? handler! Averaging the array? handler!
 - 🚫 You picked up an API that has tons of **asynchronous function** and you want all of them synchronously because you think it's easier. Don't do this, they are meant to be like this
 
-This is the right library if:
+This might be the right library if:
 - You only want to try something out in a **Playground** but the function you need is asynchronous and you don't want your prints getting all messed up
 - You (or somebody else) wrote a **synchronous function** that takes a **hella long time** to execute, you'd love to have a completion handler
 
