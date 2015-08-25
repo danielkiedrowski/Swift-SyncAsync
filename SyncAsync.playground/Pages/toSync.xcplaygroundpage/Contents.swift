@@ -57,7 +57,7 @@ func avg(vals: [Double], scale: Double, completion: (Double?, String?) -> Void) 
 
 func sayItLots(string: String, times: Int, space: Bool, completion: (String, String, String, String) -> Void) {
 	async {
-		let result = (space ? " " : "").join(Repeat(count: times, repeatedValue: string))
+		let result = Repeat(count: times, repeatedValue: string).joinWithSeparator(space ? " " : "")
 		completion(result, result, result, result)
 	}
 }

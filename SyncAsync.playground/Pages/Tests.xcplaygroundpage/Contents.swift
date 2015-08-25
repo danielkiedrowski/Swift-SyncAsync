@@ -36,7 +36,7 @@ toAsync(st22)(0, 1, completionHandler: { print("st22: \($0)") }, errorHandler: {
 
 
 NSThread.sleepForTimeInterval(1)
-print()
+print("")
 
 struct S<I, O> {
 	let i: I, c: I -> O, h: O -> ()

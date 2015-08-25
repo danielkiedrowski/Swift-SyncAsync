@@ -28,7 +28,7 @@ func sayHi(to: String, isBuddy: Bool) -> (speech: String, friendly: Bool) {
 }
 
 func product(from: Int, through: Int, steps: Int) -> Int {
-	return stride(from: from, through: through, by: steps).reduce(1, combine: *)
+	return from.stride(through: through, by: steps).reduce(1, combine: *)
 }
 
 func factorial(n: Int) throws -> Int {
@@ -46,16 +46,16 @@ let asyncProd = toAsync(product)
 let asyncFactorial = toAsync(factorial)
 let asyncDivision = toAsync(divide12345By)
 //: As you can see from the types, throwing functions automatically get converted to functions that take a completion handler, executed when succeeded, and an error handler, executed when an error occured. As with `toSync`, parameter names cannot be preserved.
-asyncHi("Paul", true, completionHandler: debugPrint)
+asyncHi("Paul", true) { debugPrint($0) }
 waitABit()
 
-asyncProd(4, 10, 2, completionHandler: debugPrint)
+asyncProd(4, 10, 2) { debugPrint($0) }
 waitABit()
 
-asyncFactorial(-3, completionHandler: debugPrint, errorHandler: debugPrint)
+asyncFactorial(-3, completionHandler: { debugPrint($0) }, errorHandler: { debugPrint($0) })
 waitABit()
 
-asyncDivision(19, completionHandler: debugPrint, errorHandler: debugPrint)
+asyncDivision(19, completionHandler: { debugPrint($0) }, errorHandler: { debugPrint($0) })
 waitABit()
 //: And yes if you really want to, you can chain `toAsync` and `toSync` even though this is utter nonsense
 
