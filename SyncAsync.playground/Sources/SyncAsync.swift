@@ -2,50 +2,67 @@ import Foundation
 
 // MARK: Utils -
 
-private struct Semaphore {
-	let semaphore = dispatch_semaphore_create(0)
-	func signal() { dispatch_semaphore_signal(semaphore) }
-	func wait() { dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER) }
+private struct Group {
+	let group = dispatch_group_create()
+	func enter() { dispatch_group_enter(group) }
+	func leave() { dispatch_group_leave(group) }
+	func wait() { dispatch_group_wait(group, DISPATCH_TIME_FOREVER) }
 }
 
-private let async = { dispatch_async(dispatch_queue_create("", DISPATCH_QUEUE_SERIAL), $0) }
+private func createConcurrent() -> dispatch_queue_t {
+	return dispatch_queue_create("", DISPATCH_QUEUE_CONCURRENT)
+}
+
+private func async(queue: dispatch_queue_t, closure: () -> Void) {
+	dispatch_async(queue, closure)
+}
 
 // MARK: - toAsync -
 
 // MARK: No Error
 
 public func toAsync<O>(f: () -> O) -> (completionHandler: O -> ()) -> () {
-	return { ch in async { ch(f()) } }
+	let queue = createConcurrent()	// Needs to be concurrent because the method can be called multiple times
+	return { ch in async(queue) { ch(f()) } }
 }
 public func toAsync<I0, O>(f: (I0) -> O) -> (I0, completionHandler: O -> ()) -> () {
-	return { i0, ch in async { ch(f(i0)) } }
+	let queue = createConcurrent()
+	return { i0, ch in async(queue) { ch(f(i0)) } }
 }
 public func toAsync<I0, I1, O>(f: (I0, I1) -> O) -> (I0, I1, completionHandler: O -> ()) -> () {
-	return { i0, i1, ch in async { ch(f(i0, i1)) } }
+	let queue = createConcurrent()
+	return { i0, i1, ch in async(queue) { ch(f(i0, i1)) } }
 }
 public func toAsync<I0, I1, I2, O>(f: (I0, I1, I2) -> O) -> (I0, I1, I2, completionHandler: O -> ()) -> () {
-	return { i0, i1, i2, ch in async { ch(f(i0, i1, i2)) } }
+	let queue = createConcurrent()
+	return { i0, i1, i2, ch in async(queue) { ch(f(i0, i1, i2)) } }
 }
 public func toAsync<I0, I1, I2, I3, O>(f: (I0, I1, I2, I3) -> O) -> (I0, I1, I2, I3, completionHandler: O -> ()) -> () {
-	return { i0, i1, i2, i3, ch in async { ch(f(i0, i1, i2, i3)) } }
+	let queue = createConcurrent()
+	return { i0, i1, i2, i3, ch in async(queue) { ch(f(i0, i1, i2, i3)) } }
 }
 
 // MARK: - Error
 
 public func toAsync<O>(f: () throws -> O) -> (completionHandler: O -> (), errorHandler: ErrorType -> ()) -> () {
-	return { ch, eh in async { do { try ch(f()) } catch { eh(error) } } }
+	let queue = createConcurrent()
+	return { ch, eh in async(queue) { do { try ch(f()) } catch { eh(error) } } }
 }
 public func toAsync<I0, O>(f: (I0) throws -> O) -> (I0, completionHandler: O -> (), errorHandler: ErrorType -> ()) -> () {
-	return { i0, ch, eh in async { do { try ch(f(i0)) } catch { eh(error) } } }
+	let queue = createConcurrent()
+	return { i0, ch, eh in async(queue) { do { try ch(f(i0)) } catch { eh(error) } } }
 }
 public func toAsync<I0, I1, O>(f: (I0, I1) throws -> O) -> (I0, I1, completionHandler: O -> (), errorHandler: ErrorType -> ()) -> () {
-	return { i0, i1, ch, eh in async { do { try ch(f(i0, i1)) } catch { eh(error) } } }
+	let queue = createConcurrent()
+	return { i0, i1, ch, eh in async(queue) { do { try ch(f(i0, i1)) } catch { eh(error) } } }
 }
 public func toAsync<I0, I1, I2, O>(f: (I0, I1, I2) throws -> O) -> (I0, I1, I2, completionHandler: O -> (), errorHandler: ErrorType -> ()) -> () {
-	return { i0, i1, i2, ch, eh in async { do { try ch(f(i0, i1, i2)) } catch { eh(error) } } }
+	let queue = createConcurrent()
+	return { i0, i1, i2, ch, eh in async(queue) { do { try ch(f(i0, i1, i2)) } catch { eh(error) } } }
 }
 public func toAsync<I0, I1, I2, I3, O>(f: (I0, I1, I2, I3) throws -> O) -> (I0, I1, I2, I3, completionHandler: O -> (), errorHandler: ErrorType -> ()) -> () {
-	return { i0, i1, i2, i3, ch, eh in async { do { try ch(f(i0, i1, i2, i3)) } catch { eh(error) } } }
+	let queue = createConcurrent()
+	return { i0, i1, i2, i3, ch, eh in async(queue) { do { try ch(f(i0, i1, i2, i3)) } catch { eh(error) } } }
 }
 
 // MARK: - toSync -
@@ -54,15 +71,16 @@ public func toAsync<I0, I1, I2, I3, O>(f: (I0, I1, I2, I3) throws -> O) -> (I0, 
 
 public func toSync<I, O, R>(f: (I, completionHandler: O -> ()) -> R, start: R -> () = { _ in }) -> I -> O {
 	return { input in
-		let semaphore = Semaphore()
+		let group = Group()
 		var output: O!
 		
+		group.enter()
 		start(f(input) {
 			output = $0
-			semaphore.signal()
+			group.leave()
 		})
 		
-		semaphore.wait()
+		group.wait()
 		return output
 	}
 }
@@ -86,17 +104,19 @@ public func toSync<I0, I1, I2, I3, O, R>(f: (I0, I1, I2, I3, completionHandler: 
 
 public func toSync<I, O, R>(f: (I, completionHandler: O -> Void, errorHandler: ErrorType -> Void) -> R, start: R -> () = {_ in }) -> I throws -> O {
 	return { i0 in
-		let sema = Semaphore()
+		let group = Group()
 		var error: ErrorType?, output: O!
+		
+		group.enter()
 		start(f(i0,
 			completionHandler: {
 				output = $0
-				sema.signal() },
+				group.leave() },
 			errorHandler: {
 				error = $0
-				sema.signal()
+				group.leave()
 		}))
-		sema.wait()
+		group.wait()
 		
 		if let error = error { throw error }
 		return output
@@ -105,17 +125,19 @@ public func toSync<I, O, R>(f: (I, completionHandler: O -> Void, errorHandler: E
 
 public func toSync<I, O, R, E: ErrorType>(f: (I, completionHandler: O -> Void, errorHandler: E -> Void) -> R, start: R -> () = {_ in }) -> I throws -> O {
 	return { i0 in
-		let sema = Semaphore()
+		let group = Group()
 		var error: E?, output: O!
+		
+		group.enter()
 		start(f(i0,
 			completionHandler: {
 				output = $0
-				sema.signal() },
+				group.leave() },
 			errorHandler: {
 				error = $0
-				sema.signal()
+				group.leave()
 		}))
-		sema.wait()
+		group.wait()
 		
 		if let error = error { throw error }
 		return output
@@ -151,14 +173,15 @@ public func toSync<I1, I2, I3, I4, O, R, E: ErrorType>(f: (I1, I2, I3, I4, compl
 
 public func toSync<I, O, R>(f: (I, completionHandler: (O, ErrorType?) -> ()) -> R, start: R -> () = { _ in }) -> I throws -> O {
 	return { input in
-		let semaphore = Semaphore()
+		let group = Group()
 		var error: ErrorType?, output: O!
 		
+		group.enter()
 		start(f(input) {
 			(output, error) = ($0, $1)
-			semaphore.signal()
+			group.leave()
 			})
-		semaphore.wait()
+		group.wait()
 		
 		if let error = error { throw error }
 		return output
@@ -167,14 +190,15 @@ public func toSync<I, O, R>(f: (I, completionHandler: (O, ErrorType?) -> ()) -> 
 
 public func toSync<I, O, R, E: ErrorType>(f: (I, completionHandler: (O, E?) -> ()) -> R, start: R -> () = { _ in }) -> I throws -> O {
 	return { input in
-		let semaphore = Semaphore()
+		let group = Group()
 		var error: E?, output: O!
 		
+		group.enter()
 		start(f(input) {
 			(output, error) = ($0, $1)
-			semaphore.signal()
+			group.leave()
 			})
-		semaphore.wait()
+		group.wait()
 		
 		if let error = error { throw error }
 		return output
