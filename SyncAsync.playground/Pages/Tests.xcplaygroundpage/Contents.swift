@@ -1,13 +1,13 @@
 import Foundation
-import XCPlayground
+import PlaygroundSupport
 
-XCPSetExecutionShouldContinueIndefinitely()
+PlaygroundPage.current.needsIndefiniteExecution = true
 
 // This test set isn't complete in that it doesn't test every function, however most functions in SyncAsync.swift were generated automatically, a typo isn't likely
 
-enum E : ErrorType {
+enum E : Error {
 	case E
-	init() { self = E }
+	init() { self = .E }
 }
 
 func sn11(a: Int) -> Int { return a }
@@ -25,33 +25,33 @@ toAsync(sn21)(1, 1) { print("sn21: \($0)") }
 toAsync(sn12)(1) { a, b in print("sn12: \(a, b)") }
 toAsync(sn22)(1, 1) { print("sn22: \($0)") }
 
-toAsync(st11)(1, completionHandler: { print("st11: \($0)") }, errorHandler: { print("st11 error: \($0)") })
-toAsync(st11)(0, completionHandler: { print("st11: \($0)") }, errorHandler: { print("st11 error: \($0)") })
-toAsync(st21)(1, 1, completionHandler: { print("st21: \($0)") }, errorHandler: { print("st21 error: \($0)") })
-toAsync(st21)(1, 0, completionHandler: { print("st21: \($0)") }, errorHandler: { print("st21 error: \($0)") })
-toAsync(st12)(1, completionHandler: { a, b in print("st12: \(a, b)") }, errorHandler: { print("st12 error: \($0)") })
-toAsync(st12)(0, completionHandler: { print("st12: \($0)") }, errorHandler: { print("st12 error: \($0)") })
-toAsync(st22)(1, 1, completionHandler: { print("st22: \($0)") }, errorHandler: { print("st22 error: \($0)") })
-toAsync(st22)(0, 1, completionHandler: { print("st22: \($0)") }, errorHandler: { print("st22 error: \($0)") })
+toAsync(st11)(1, { print("st11: \($0)") }, { print("st11 error: \($0)") })
+toAsync(st11)(0, { print("st11: \($0)") }, { print("st11 error: \($0)") })
+toAsync(st21)(1, 1, { print("st21: \($0)") }, { print("st21 error: \($0)") })
+toAsync(st21)(1, 0, { print("st21: \($0)") }, { print("st21 error: \($0)") })
+toAsync(st12)(1, { a, b in print("st12: \(a, b)") }, { print("st12 error: \($0)") })
+toAsync(st12)(0, { print("st12: \($0)") }, { print("st12 error: \($0)") })
+toAsync(st22)(1, 1, { print("st22: \($0)") }, { print("st22 error: \($0)") })
+toAsync(st22)(0, 1, { print("st22: \($0)") }, { print("st22 error: \($0)") })
 
 
-NSThread.sleepForTimeInterval(1)
+Thread.sleep(forTimeInterval: 1)
 print("")
 
 struct S<I, O> {
-	let i: I, c: I -> O, h: O -> ()
+	let i: I, c: (I) -> O, h: (O) -> ()
 	func exec() { h(c(i)) }
 }
 
-func ann11(a: Int, h: Int -> ()) { h(a) }
-func ann21(a: Int, b: Int, h: Int -> ()) { h(a + b) }
+func ann11(a: Int, h: (Int) -> ()) { h(a) }
+func ann21(a: Int, b: Int, h: (Int) -> ()) { h(a + b) }
 func ann12(a: Int, h: (Int, Int) -> ()) { h(a, a + 1) }
 func ann22(a: Int, b: Int, h: (Int, Int) -> ()) { h(a + b, a - b) }
 
-func asn11(a: Int, h: Int -> ()) -> S<Int, Int> { return S(i: a, c: {$0}, h: h) }
-func asn21(a: Int, b: Int, h: Int -> ()) -> S<(Int, Int), Int> { return S(i: (a, b), c: {$0.0 + $0.1}, h: h) }
-func asn12(a: Int, h: (Int, Int) -> ()) -> S<Int, (Int, Int)> { return S(i: a, c: {($0, $0 + 1)}, h: h) }
-func asn22(a: Int, b: Int, h: (Int, Int) -> ()) -> S<(Int, Int), (Int, Int)> { return S(i: (a, b), c: {($0.0 + $0.1, $0.0 - $0.1)}, h: h) }
+func asn11(a: Int, h: @escaping (Int) -> ()) -> S<Int, Int> { return S(i: a, c: {$0}, h: h) }
+func asn21(a: Int, b: Int, h: @escaping (Int) -> ()) -> S<(Int, Int), Int> { return S(i: (a, b), c: {$0.0 + $0.1}, h: h) }
+func asn12(a: Int, h: @escaping (Int, Int) -> ()) -> S<Int, (Int, Int)> { return S(i: a, c: {($0, $0 + 1)}, h: h) }
+func asn22(a: Int, b: Int, h: @escaping (Int, Int) -> ()) -> S<(Int, Int), (Int, Int)> { return S(i: (a, b), c: {($0.0 + $0.1, $0.0 - $0.1)}, h: h) }
 
 
 
@@ -66,10 +66,10 @@ print("asn12 \(toSync(asn12) { $0.exec() }(1))")
 print("asn22 \(toSync(asn22) { $0.exec() }(1, 1))")
 
 
-func ant11(a: Int, h: (Int?, ErrorType?) -> ()) { a > 0 ? h(a, nil) : h(nil, E()) }
-func ant21(a: Int, b: Int, h: (Int?, ErrorType?) -> ()) { a > 0 && b > 0 ? h(a + b, nil) : h(nil, E()) }
-func ant12(a: Int, h: (Int?, Int?, ErrorType?) -> ()) { a > 0 ? h(a, a + 1, nil) : h(nil, nil, E()) }
-func ant22(a: Int, b: Int, h: (Int?, Int?, ErrorType?) -> ()) { a > 0 && b > 0 ? h(a + b, a - b, nil) : h(nil, nil, E()) }
+func ant11(a: Int, h: (Int?, Error?) -> ()) { a > 0 ? h(a, nil) : h(nil, E()) }
+func ant21(a: Int, b: Int, h: (Int?, Error?) -> ()) { a > 0 && b > 0 ? h(a + b, nil) : h(nil, E()) }
+func ant12(a: Int, h: (Int?, Int?, Error?) -> ()) { a > 0 ? h(a, a + 1, nil) : h(nil, nil, E()) }
+func ant22(a: Int, b: Int, h: (Int?, Int?, Error?) -> ()) { a > 0 && b > 0 ? h(a + b, a - b, nil) : h(nil, nil, E()) }
 
 do { try print("ant11: \(toSync(ant11)(1))") } catch { print(error) }
 do { try print("ant21: \(toSync(ant21)(1, 1))") } catch { print(error) }

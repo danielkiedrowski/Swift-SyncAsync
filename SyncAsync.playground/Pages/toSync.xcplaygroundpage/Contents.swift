@@ -22,7 +22,7 @@ Later in this playground I will ofter refer to input and output of a function wh
 
 Here we have an asynchronous function (the `async` is just a small utility to make asynchronous calling easier, see Utils.swift. We could also just ommit `async` for demonstration purposes but let's have it there anyways).
 */
-func doubleLater(n: Int, whenDone: Int -> Void) {
+func doubleLater(n: Int, whenDone: @escaping (Int) -> Void) {
 	async { whenDone(n * 2) }
 }
 //: With the global function `toSync` you can convert it to the synchronous equivalent easily. `toSync` is a higher-order function: It takes a function as a parameter and returns another function (closures can be used too, as they are pretty much the same as functions)
@@ -42,43 +42,43 @@ toSync(doubleLater)(5)
 To demonstrate this, let's create a few different asynchronous functions
 */
 // Our own error type
-enum Error : ErrorType {
+enum MyError : Error {
 	case CannotDivideOddByTwo
 	case FutureReference
 }
 
-func avg(vals: [Double], scale: Double, completion: (Double?, String?) -> Void) {
+func avg(vals: [Double], scale: Double, completion: @escaping (Double?, String?) -> Void) {
 	async {
 		guard vals.count != 0 else { completion(nil, nil); return }
-		let result = vals.reduce(0, combine: +) / Double(vals.count) * scale
+		let result = vals.reduce(0, +) / Double(vals.count) * scale
 		completion(result, "The average scaled by \(scale) is \(result)")
 	}
 }
 
-func sayItLots(string: String, times: Int, space: Bool, completion: (String, String, String, String) -> Void) {
+func sayItLots(string: String, times: Int, space: Bool, completion: @escaping (String, String, String, String) -> Void) {
 	async {
-		let result = Repeat(count: times, repeatedValue: string).joinWithSeparator(space ? " " : "")
+		let result = repeatElement(string, count: times).joined(separator: space ? " " : "")
 		completion(result, result, result, result)
 	}
 }
 
 import Foundation
-func iLikeThrowing(completionHandler: ErrorType? -> Void) {
+func iLikeThrowing(completionHandler: @escaping (Error?) -> Void) {
 	async {
 		completionHandler(NSError(domain: "MyOne", code: 42, userInfo: nil))
 	}
 }
 
-func half(n: Int, completionHandler: (Int?, Error?) -> Void) {
+func half(n: Int, completionHandler: @escaping (Int?, Error?) -> Void) {
 	async {
 		if n % 2 == 0 { completionHandler(n / 2, nil) }
-		else { completionHandler(nil, Error.CannotDivideOddByTwo) }
+		else { completionHandler(nil, MyError.CannotDivideOddByTwo) }
 	}
 }
 
-func howMuchShouldIEat(hungry: Bool, hasFood: Bool, numberOfHoursWithoutEating: Int, whenDoneDeciding: Double -> Void, onError: Error -> Void) {
+func howMuchShouldIEat(hungry: Bool, hasFood: Bool, numberOfHoursWithoutEating: Int, whenDoneDeciding: @escaping (Double) -> Void, onError: @escaping (Error) -> Void) {
 	async {
-		guard numberOfHoursWithoutEating >= 0 else { onError(Error.FutureReference); return }
+		guard numberOfHoursWithoutEating >= 0 else { onError(MyError.FutureReference); return }
 		let amount = hasFood ? pow(hungry ? 2.0 : 1.5, Double(numberOfHoursWithoutEating)) : 0.0
 		whenDoneDeciding(amount)
 	}
@@ -107,13 +107,12 @@ do {
 //: There are also functions that don't automatically start when you call them, but instead need some action for them to activate. A good example of this is the `dataTaskWithURL:` function of `NSURLSession` which returns an NSURLSessionDataTask that has to be started using its `resume` method. If you don't call `resume` on the result, nothing would happen until you do.
 //:
 //: The `toSync` has an optional closure as its last parameter. This closure takes the value returned from the asynchronous function for you to do something with it. With this in mind you can create a synchronous network task.
-let request = toSync(NSURLSession.sharedSession().dataTaskWithURL) { $0.resume() }
-
+let request = toSync({ (url: URL, ch: @escaping (Data?, URLResponse?, Error?)->()) in URLSession.shared.dataTask(with: url, completionHandler: ch) }) { $0.resume() }
 //: This newly created `getData` function is now usable as is. If you modify the url to something non-existant an error will be thrown synchronously and you don't have to worry about providing a callback.
 
 do {
-	let (data, response) = try request(NSURL(string: "https://www.google.com/")!)
-	print(response)
+	let (data, response) = try request(URL(string: "https://www.google.com/")!)
+	print(response!)
 } catch {
 	print(error)
 }
@@ -130,7 +129,7 @@ struct RemoteControl {
 	}
 }
 
-func printByRemote(string: String, didPrint: () -> Void) -> RemoteControl {
+func printByRemote(string: String, didPrint: @escaping () -> Void) -> RemoteControl {
 	return RemoteControl(string: string, callback: didPrint)
 }
 

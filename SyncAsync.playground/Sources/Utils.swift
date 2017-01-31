@@ -1,12 +1,12 @@
 import Foundation
 
-public func async(closure: () -> ()) {
-	dispatch_async(dispatch_queue_create("Async", DISPATCH_QUEUE_SERIAL)) {
-		closure()
-	}
+public func async(closure: @escaping () -> ()) {
+    DispatchQueue(label: "Async", attributes: .concurrent).async {
+        closure()
+    }
 }
 
 public func waitABit() {
-	NSThread.sleepForTimeInterval(0.01)
+	Thread.sleep(forTimeInterval: 0.01)
 }
 

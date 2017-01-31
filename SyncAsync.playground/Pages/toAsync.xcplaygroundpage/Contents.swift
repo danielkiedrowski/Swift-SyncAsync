@@ -14,7 +14,7 @@ waitABit() // Waits a bit so that the outputs don't get messed up (because it's 
 //: Like the `toSync` function, the `toAsync` function is overloaded for it to be able to take up to four inputs and an unlimited amount of outputs. To demonstrate this, we'll create a few synchronous functions
 
 // Our own error type
-enum Error: ErrorType {
+enum MyError: Error {
 	case LessThanZero
 	case DivisionByZero
 }
@@ -28,16 +28,16 @@ func sayHi(to: String, isBuddy: Bool) -> (speech: String, friendly: Bool) {
 }
 
 func product(from: Int, through: Int, steps: Int) -> Int {
-	return from.stride(through: through, by: steps).reduce(1, combine: *)
+    return stride(from: from, through: through, by: steps).reduce(1, *)
 }
 
 func factorial(n: Int) throws -> Int {
-	guard n >= 0 else { throw Error.LessThanZero }
-	return n < 2 ? 1 : try factorial(n - 1) * n
+	guard n >= 0 else { throw MyError.LessThanZero }
+	return n < 2 ? 1 : try factorial(n: n - 1) * n
 }
 
 func divide12345By(val: Double) throws -> (Double, Double, Double, Double, Double) {
-	guard val != 0 else { throw Error.DivisionByZero }
+	guard val != 0 else { throw MyError.DivisionByZero }
 	return (1 / val, 2 / val, 3 / val, 4 / val, 5 / val)
 }
 //: Simply call `toAsync` to convert these to asynchronoous functions
@@ -52,14 +52,14 @@ waitABit()
 asyncProd(4, 10, 2) { debugPrint($0) }
 waitABit()
 
-asyncFactorial(-3, completionHandler: { debugPrint($0) }, errorHandler: { debugPrint($0) })
+asyncFactorial(-3, { debugPrint($0) }, { debugPrint($0) })
 waitABit()
 
-asyncDivision(19, completionHandler: { debugPrint($0) }, errorHandler: { debugPrint($0) })
+asyncDivision(19, { debugPrint($0) }, { debugPrint($0) })
 waitABit()
 //: And yes if you really want to, you can chain `toAsync` and `toSync` even though this is utter nonsense
 
-toSync(toAsync(sayHi))("Bob", false)
+//toSync(toAsync(sayHi))("Bob", false)
 
 /*:
 I hope this small library helps you, it was really fun to write it anyways. The source file was partly generated automatically, errors are unlikely, also due to the very strict function signatures, however if you happen to find an error, please let me know (@Kametrixom on Twitter, Reddit, StackOverflow, Github, ...) and I'll see what I can do. Suggestions and critique are very welcome as well. If you don't like that the functions are so minimized, I'm sorry, but otherwise it would get very big. Also sorry for any typos, english isn't my native language. If you're able to use my library for anything useful, I wouldn't mind a mention on Twitter ;)
